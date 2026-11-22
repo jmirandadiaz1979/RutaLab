@@ -27,7 +27,7 @@ th{font-size:12px;color:var(--mut);font-weight:600}th:first-child,td:first-child
 <label>FC reposo<input id="hr0" value="52"></label><label>FC umbral<input id="lt" value="168"></label>
 <label>Cadencia habitual (rpm)<input id="cp" placeholder="opcional"></label><label>Sudoración (L/h)<input id="sw" placeholder="opcional"></label><label>Pérdida de sal<select id="sl"><option value="bajo">Baja</option><option value="normal" selected>Normal</option><option value="alto">Alta (sal visible)</option></select></label><label>Carbohidratos tolerados (g/h)<input id="ct" value="60"></label></div></section>
 <section><h2>Ruta y condiciones</h2><div class="g">
-<label>Modo<select id="rm"><option value="gpx">Con ruta GPX</option><option value="free">Entreno libre (sin ruta)</option></select></label><div id="gp" class="c"><label>Archivo GPX<input type="file" id="gpx" accept=".gpx"></label><button id="demo" class="alt">Probar con ruta de ejemplo</button></div><div id="fr" class="c" hidden><label>Distancia (km)<input id="fd" value="40"></label><label>Duración (h:mm)<input id="fT" placeholder="opcional"></label><label>Desnivel + (m)<input id="fg" value="300"></label></div>
+<label>Modo<select id="rm"><option value="gpx">Con ruta GPX</option><option value="free">Entreno libre (sin ruta)</option></select></label><div id="gp" class="c"><label>Archivo GPX<input type="file" id="gpx" accept=".gpx"></label><button id="demo" class="alt">Probar con ruta de ejemplo</button></div><div id="fr" class="c" hidden><label>Distancia (km)<input id="fd" value="40"></label><label>Duración (h:mm)<input id="fT" placeholder="opcional"></label><label>Desnivel + (m)<input id="fg" value="300"></label><label>Límite del entreno<select id="fn"><option value="0">Distancia o duración</option><option value="1">Sin límite (solo intensidad)</option></select></label></div>
 <label>Temperatura (°C)<input id="tp" value="18"></label><label>Humedad (%)<input id="rh" value="55"></label>
 <label>Posición<select id="pos"><option value="hoods">Manetas</option><option value="drops">Manos abajo</option><option value="tt">Aero / CRI</option><option value="upright">Erguido</option></select></label>
 <label>Firme<select id="ter"><option value="road">Carretera</option><option value="gravel">Gravel</option></select></label>
@@ -40,7 +40,7 @@ th{font-size:12px;color:var(--mut);font-weight:600}th:first-child,td:first-child
 var $=function(s){return document.querySelector(s)},num=function(x){var n=parseFloat(String(x).replace(",","."));return isNaN(n)?NaN:n},cl=function(x,a,b){return Math.max(a,Math.min(b,x))};
 var nf=function(n,d){return n.toLocaleString("es-ES",{minimumFractionDigits:d||0,maximumFractionDigits:d||0})};
 var ft=function(s){s=Math.round(s);var h=Math.floor(s/3600),m=Math.floor(s%3600/60);return h>0?h+" h "+(m<10?"0":"")+m+" min":m+" min"};
-var IDS=["w","bk","ftp","hm","hr0","lt","cp","tp","pos","ter","grp","mode","val","rm","fd","fT","fg","sw","sl","ct","rh"],R=null,PLAN=null,SEGC=null;
+var IDS=["w","bk","ftp","hm","hr0","lt","cp","tp","pos","ter","grp","mode","val","rm","fd","fT","fg","sw","sl","ct","rh","fn"],R=null,PLAN=null,SEGC=null;
 try{var sv=JSON.parse(localStorage.getItem("rutalab")||"{}");IDS.forEach(function(i){if(sv[i]!=null)$("#"+i).value=sv[i]})}catch(e){}
 function save(){try{var o={};IDS.forEach(function(i){o[i]=$("#"+i).value});localStorage.setItem("rutalab",JSON.stringify(o))}catch(e){}}
 /* ---- ruta ---- */
@@ -77,17 +77,18 @@ var PW=function(s,g){var th=Math.atan(g);return(.5*rho*cda*s*s*s+(crr*Math.cos(t
 var SP=function(P,g){if(P<=1)return .3;var lo=.1,hi=30;for(var i=0;i<40;i++){var m=(lo+hi)/2;if(PW(m,g)>P)hi=m;else lo=m}return cl((lo+hi)/2,.3,16)};
 var tparse=function(x){x=String(x||"").trim();if(!x)return NaN;var q=x.split(":");return q.length>1?num(q[0])*3600+num(q[1])*60:num(x)*3600};
 if(free){if(mode=="time"){o.innerHTML='<p class="warn">En entreno libre fija la intensidad: potencia, % FTP, FC o velocidad.</p>';return}
-var Dk=num($("#fd").value),Ts=tparse($("#fT").value),gn=Math.max(0,num($("#fg").value)||0),hasD=Dk>0,hasT=Ts>0,tgv=num(tv);
-if(!hasD&&!hasT){o.innerHTML='<p class="warn">Indica la distancia o la duración del entreno.</p>';return}
+var Dk=num($("#fd").value),Ts=tparse($("#fT").value),gn=Math.max(0,num($("#fg").value)||0),nl=$("#fn").value=="1",hasD=!nl&&Dk>0,hasT=!nl&&Ts>0,tgv=num(tv);
+var noEnd=!hasD&&!hasT;if(noEnd&&!nl){o.innerHTML='<p class="warn">Indica la distancia o la duración, o elige «Sin límite».</p>';return}
+if(noEnd&&mode=="speed"){o.innerHTML='<p class="warn">Sin límite: fija la intensidad con potencia, % FTP o FC.</p>';return}
 if(!(tgv>0)&&!(hasD&&hasT)){o.innerHTML='<p class="warn">Indica un valor válido para el objetivo.</p>';return}
 var fv=function(g,T){return mode=="pwr"?SP(tgv,g):mode=="ftp"?SP(tgv/100*fe,g):mode=="speed"?tgv/3.6:SP(Math.max(0,fe*((tgv-h0)/(lt-h0)/(dr(T)*hf)-.35)/.65),g)},vf,Dm,Tt;
-if(hasD&&hasT){Dm=Dk*1000;Tt=Ts;vf=Dm/Tt}else{vf=7;for(var it=0;it<80;it++){var Dd=hasT?vf*Ts:Dk*1000,T1=hasT?Ts:Dd/vf,nv=fv(gn/Math.max(Dd,1),T1);if(Math.abs(nv-vf)<1e-5){vf=nv;break}vf=.5*vf+.5*nv}Dm=hasT?vf*Ts:Dk*1000;Tt=Dm/vf}
+if(noEnd){gn=0;Tt=7200;vf=fv(0,Tt);Dm=vf*Tt}else if(hasD&&hasT){Dm=Dk*1000;Tt=Ts;vf=Dm/Tt}else{vf=7;for(var it=0;it<80;it++){var Dd=hasT?vf*Ts:Dk*1000,T1=hasT?Ts:Dd/vf,nv=fv(gn/Math.max(Dd,1),T1);if(Math.abs(nv-vf)<1e-5){vf=nv;break}vf=.5*vf+.5*nv}Dm=hasT?vf*Ts:Dk*1000;Tt=Dm/vf}
 var g=gn/Dm,Pf=PW(vf,g),hrT=h0+(.35+.65*Pf/fe)*(lt-h0)*dr(Tt)*hf,b=88-2*g*100+18*(Pf/fe-.7);if(cp>0)b=.5*b+.5*cp;b=Math.round(cl(b,65,105));
 var IF=Pf/fe,sust=cl(1-.1*Math.log(Tt/3600)/Math.LN2,.55,1.25);
-PLAN={free:1,D:Dm,P:Pf,hr:hrT,rpm:b,fe:ftp,end:hasD?["d",Math.round(Dm)]:["t",Math.round(Tt)],ss:[{k0:0,k1:Dm/1000,L:Dm,g:g,P:Pf,hr:hrT,rpm:b,v:vf}]};
-var h='<section><h2>Objetivo del entreno libre</h2><div class="k">'+[[nf(Dm/1000,1),"km"],[ft(Tt),"duración"],[nf(vf*3.6,1),"km/h medios"],[nf(Pf),"W medios"],[nf(hrT),"FC objetivo"],[b,"rpm"],[nf(IF,2),"IF"],[nf(Tt/3600*IF*IF*100),"TSS"],[nf(Pf*Tt/1000),"kcal aprox."]].map(function(x){return'<div><b>'+x[0]+'</b><span>'+x[1]+'</span></div>'}).join("")+'</div>';
+PLAN={free:1,D:Dm,P:Pf,hr:hrT,rpm:b,fe:ftp,end:noEnd?["n",0]:hasD?["d",Math.round(Dm)]:["t",Math.round(Tt)],ss:[{k0:0,k1:Dm/1000,L:Dm,g:g,P:Pf,hr:hrT,rpm:b,v:vf}]};
+var h='<section><h2>Objetivo del entreno libre</h2><div class="k">'+(noEnd?[[nf(vf*3.6,1),"km/h en llano"],[nf(Pf),"W objetivo"],[nf(hrT),"FC objetivo"],[b,"rpm"],[nf(IF,2),"IF"]]:[[nf(Dm/1000,1),"km"],[ft(Tt),"duración"],[nf(vf*3.6,1),"km/h medios"],[nf(Pf),"W medios"],[nf(hrT),"FC objetivo"],[b,"rpm"],[nf(IF,2),"IF"],[nf(Tt/3600*IF*IF*100),"TSS"],[nf(Pf*Tt/1000),"kcal aprox."]]).map(function(x){return'<div><b>'+x[0]+'</b><span>'+x[1]+'</span></div>'}).join("")+'</div>';
 if(IF>sust)h+='<p class="warn">Objetivo exigente: IF '+nf(IF,2)+' frente a ~'+nf(sust,2)+' sostenible para esta duración.</p>';
-h+='<p class="note">En el Edge, el campo ajustará los vatios a la pendiente real y avisará «Objetivo alcanzado» al llegar a '+(hasD?nf(Dm/1000,1)+' km':ft(Tt))+', aunque sigas pedaleando. También te recordará beber y comer según el plan de abajo.</p><div class="row"><button id="bcfg">Copiar ajustes para el Edge</button><button id="bfit" class="alt">Descargar entreno .FIT</button></div></section>';
+h+='<p class="note">En el Edge, el campo ajustará los vatios a la pendiente real '+(noEnd?'y no marcará final de entreno (sin límite de distancia ni tiempo); los avisos de beber y comer se calculan para unas 2 h.':'y avisará «Objetivo alcanzado» al llegar a '+(hasD?nf(Dm/1000,1)+' km':ft(Tt))+', aunque sigas pedaleando.')+' También te recordará beber y comer según el plan de abajo.</p><div class="row"><button id="bcfg">Copiar ajustes para el Edge</button><button id="bfit" class="alt">Descargar entreno .FIT</button></div></section>';
 var nu=nutri(Tt,Pf,IF,tp,num($("#rh").value)||50,w);h+=nu.h;PLAN.nu=nu.c;o.innerHTML=h;$("#bfit").onclick=dlFit;$("#bcfg").onclick=cpCfg;return}
 if(mode=="hr"||mode=="speed"){o.innerHTML='<p class="warn">FC y velocidad como objetivo solo están disponibles en entreno libre.</p>';return}
 var ss=segments(),run=function(Pb){var T=0,W=0;ss.forEach(function(s){s.P=Math.min(Pb*fac(s.g),1.1*fe);s.v=SP(s.P,s.g);s.t=s.L/s.v;T+=s.t;W+=s.P*s.t});return{T:T,Pa:W/T}};
