@@ -100,14 +100,14 @@ for(i=1;i<R.Z.length;i++)gain+=Math.max(0,R.Z[i]-R.Z[i-1]);
 ss.forEach(function(s,j){var tm=tc+s.t/2;tc+=s.t;s.hr=h0+(.35+.65*s.P/fe)*(lt-h0)*dr(tm)*hf;hrS+=s.hr*s.t;
 var b=88-2*s.g*100+18*(s.P/fe-.7);if(cp>0)b=.5*b+.5*cp;s.rpm=Math.round(cl(b,65,105));s.k0=R.D[s.a]/1000;s.k1=R.D[s.b]/1000;s.n=j+1});
 var IF=r.Pa/fe,sust=cl(1-.1*Math.log(r.T/3600)/Math.LN2,.55,1.25);
-PLAN={ss:ss,r:r,D:D};
+PLAN={ss:ss,r:r,D:D,fe:ftp,P:hi,hr:hrS/r.T,rpm:Math.round(ss.reduce(function(a,s){return a+s.rpm*s.t},0)/r.T),end:["d",Math.round(D)]};
 var h='<section><h2>Resumen del entreno</h2><div class="k">'+[[nf(D/1000,1),"km"],[ft(r.T),"duración"],[nf(D/r.T*3.6,1),"km/h medios"],[nf(r.Pa),"W medios"],[nf(hrS/r.T),"FC media"],[nf(gain),"m de desnivel +"],[nf(IF,2),"IF"],[nf(r.T/3600*IF*IF*100),"TSS"],[nf(r.Pa*r.T/1000),"kcal aprox."]].map(function(x){return'<div><b>'+x[0]+'</b><span>'+x[1]+'</span></div>'}).join("")+'</div>';
 if(IF>sust)h+='<p class="warn">Objetivo exigente: IF '+nf(IF,2)+' frente a ~'+nf(sust,2)+' sostenible para esta duración.</p>';
 h+='</section><section><h2>Perfil por vatios</h2>'+chart(ss,fe)+'<p class="note">Más cálido = más vatios. Se empuja en las subidas y se recupera en las bajadas, manteniendo tu objetivo medio.</p></section>';
-var nu=nutri(r.T,r.Pa,IF,tp,num($("#rh").value)||50,w);h+=nu.h;h+='<section><h2>Plan por tramos ('+ss.length+')</h2><div class="tw"><table><tr><th>Tramo</th><th>Tipo</th><th>Vatios</th><th>FC</th><th>rpm</th><th>km/h</th><th>Tiempo</th></tr>';
+var nu=nutri(r.T,r.Pa,IF,tp,num($("#rh").value)||50,w);PLAN.nu=nu.c;h+=nu.h;h+='<section><h2>Plan por tramos ('+ss.length+')</h2><div class="tw"><table><tr><th>Tramo</th><th>Tipo</th><th>Vatios</th><th>FC</th><th>rpm</th><th>km/h</th><th>Tiempo</th></tr>';
 ss.forEach(function(s){h+='<tr style="border-left:6px solid '+col(s.P/fe)+'"><td>'+nf(s.k0,1)+'–'+nf(s.k1,1)+' km</td><td>'+kind(s.g)+' '+nf(s.g*100,1)+'%</td><td class="w">'+Math.round(s.P*.95)+'–'+Math.round(s.P*1.05)+'</td><td>'+Math.round(s.hr)+'</td><td>'+s.rpm+'</td><td>'+nf(s.v*3.6,1)+'</td><td>'+ft(s.t)+'</td></tr>'});
-h+='</table></div><div class="row"><button id="bfit">Descargar entreno .FIT</button><button id="bcp" class="alt">Copiar plan</button></div><p class="note">Copia el .FIT a la carpeta Garmin/NewFiles del Edge por USB. Los pasos son por distancia con objetivo de vatios; FC y rpm van en las notas del paso. Máximo 48 pasos.</p></section>';
-o.innerHTML=h;$("#bfit").onclick=dlFit;$("#bcp").onclick=cpPlan}
+h+='</table></div><div class="row"><button id="bfit">Descargar entreno .FIT</button><button id="bcp" class="alt">Copiar plan</button><button id="bcfg" class="alt">Copiar ajustes para el Edge</button></div><p class="note">Copia el .FIT a la carpeta Garmin/NewFiles del Edge por USB. Los pasos son por distancia con objetivo de vatios; FC y rpm van en las notas del paso. Máximo 48 pasos.</p></section>';
+o.innerHTML=h;$("#bfit").onclick=dlFit;$("#bcp").onclick=cpPlan;$("#bcfg").onclick=cpCfg}
 function chart(ss,fe){var W=800,H=170,zl=Math.min.apply(0,R.Z),zh=Math.max.apply(0,R.Z),dz=Math.max(zh-zl,20),D=R.D[R.D.length-1],
 X=function(d){return(10+d/D*(W-20)).toFixed(1)},Y=function(z){return(12+(1-(z-zl)/dz)*(H-40)).toFixed(1)};
 var o='<svg viewBox="0 0 '+W+' '+H+'" role="img" aria-label="Perfil de la ruta coloreado por vatios">';
